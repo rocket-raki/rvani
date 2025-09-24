@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>R'Vani | Web Chat</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+  <style>
+    :root {
+      --sidebar-bg: #d9d7d7;
+      --icon-color: #393a3b;
+      --highlight-color: #1b7294;
+      --electric-blue: #156e8f;
+      --sidebar-width-collapsed: 60px;
+      --sidebar-width-expanded: 150px;
+      --transition-speed: 0.3s;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #faf7f7;
+      color: black;
+      display: flex;
+    }
+    .sidebar {
+      width: var(--sidebar-width-collapsed);
+      background-color: var(--sidebar-bg);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 0;
+      box-sizing: border-box;
+      transition: width var(--transition-speed) ease;
+      overflow: hidden;
+    }
+    .sidebar.expanded { width: var(--sidebar-width-expanded); }
+    #sidebar-menu { display: flex; flex-direction: column; height: 100%; }
+    .bottom-icons { margin-top: auto; }
+    .top-icons, .bottom-icons { display: flex; flex-direction: column; gap: 5px; padding-left: 5px; }
+    .icon-wrapper {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      padding: 0 5px;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+      border-radius: 6px 0 0 6px;
+      outline: none;
+    }
+    .icon-wrapper:hover, .icon-wrapper:focus-visible {
+      background-color: rgba(0, 191, 255, 0.1);
+      border-left-color: var(--highlight-color);
+    }
+    .icon-wrapper.selected {
+      background-color: rgba(0, 255, 255, 0.08);
+      border-left-color: var(--electric-blue);
+    }
+    .icon-wrapper.selected .material-icons-outlined { color: var(--electric-blue); }
+    .material-icons-outlined {
+      font-size: 24px;
+      color: var(--icon-color);
+      width: 24px;
+      height: 24px;
+      margin-left: 4px;
+    }
+    .label {
+      margin-left: 15px;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-speed);
+    }
+    .sidebar.expanded .label { opacity: 1; pointer-events: auto; }
+    #sidebar-toggle {
+      background: none;
+      border: none;
+      color: var(--icon-color);
+      font-size: 28px;
+      cursor: pointer;
+      margin-left: 10px;
+      margin-bottom: 20px;
+      align-self: flex-start;
+      transition: color 0.3s ease;
+    }
+    #sidebar-toggle:hover, #sidebar-toggle:focus-visible { color: var(--highlight-color); }
+    #sidebar-toggle:focus-visible { outline: 2px solid var(--highlight-color); outline-offset: 2px; }
+    .sidebar:not(.expanded) .icon-wrapper[title]:hover::after,
+    .sidebar:not(.expanded) .icon-wrapper[title]:focus-visible::after {
+      content: attr(title);
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translate(8px, -50%);
+      background-color: var(--highlight-color);
+      color: #000;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      white-space: nowrap;
+      z-index: 1000;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+    .sidebar.expanded .icon-wrapper::after { display: none; }
+    main {
+      margin-left: var(--sidebar-width-collapsed);
+      transition: margin-left var(--transition-speed);
+      flex-grow: 1;
+      display: flex;
+    }
+    .sidebar.expanded ~ main { margin-left: var(--sidebar-width-expanded); }
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      width: 40vh;
+      height: 100vh;
+      border-right: 1px solid #ccc;
+      background: #f7f9fa;
+      position: fixed;
+    }
+    .left-panel { display: flex; flex-direction: column; height: 100%; width: 100%; box-sizing: border-box; padding: 5px; }
+    .dashboard-header { flex-shrink: 0; border-bottom: 0; padding: 5px 0 23px; margin-bottom: 10px; color: var(--electric-blue); display: flex; align-items: center; }
+    .dashboard-header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    .dashboard-search { flex-shrink: 0; }
+    .dashboard-search input {
+      width: calc(100% - 30px);
+      height: 35px;
+      margin-bottom: 10px;
+      border: 1px solid #949697;
+      font-size: 14px;
+      border-radius: 5px;
+      padding-left: 8px;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+    .dashboard-search img { width: 20px; height: 20px; vertical-align: middle; cursor: pointer; }
+    .chat-list { flex-grow: 1; overflow-y: auto; border: 1px solid #c6c4c4; background: #fff; padding: 5px; }
+    .chat-item { display: flex; align-items: center; padding: 8px; margin: 5px 0; border-bottom: 1px solid #ddd; cursor: pointer; }
+    .chat-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+    .chat-item h5 { margin: 0; font-size: 14px; font-weight: 600; }
+    .chat-item p { margin: 0; font-size: 12px; color: gray; }
+    .chat-item:last-child { border-bottom: none; }
+    .chat-list::-webkit-scrollbar, .chat-box::-webkit-scrollbar { width: 2px; }
+    .chat-list::-webkit-scrollbar-track, .chat-box::-webkit-scrollbar-track { background: #fcfafa; }
+    .chat-list::-webkit-scrollbar-thumb, .chat-box::-webkit-scrollbar-thumb { background: var(--highlight-color); border-radius: 5px; }
+    .chat-list::-webkit-scrollbar-thumb:hover { background: var(--electric-blue); }
+    .runner {
+      margin-left: 40vh;
+      width: calc(100% - 47.5vh);
+      height: 100vh;
+      background: #fefdfd;
+      border-left: 1px solid #ccc;
+      padding: 0;
+      box-sizing: border-box;
+      position: fixed;
+      overflow-y: auto;
+    }
+    .chat-header { flex-shrink: 0; padding: 10px; background: #f5f5f5; border-bottom: 0; display: flex; align-items: center; gap: 10px; }
+    .chat-header img.chat-user-pic { width: 40px; height: 40px; border-radius: 50%; }
+    .chat-user-info h4 { margin: 0; font-size: 18px; }
+    .chat-section { display: flex; flex-direction: column; height: 100%; }
+    .chat-box { flex: 1; overflow-y: auto; padding: 25px; display: flex; background-color: #e1e3e3; flex-direction: column; margin: 1vh; }
+    .chat-box .message { max-width: 60%; margin-bottom: 10px; padding: 8px 12px; border-radius: 15px; width: fit-content; font-size: 14px; background-color: #adbec5; line-height: 1.4; }
+    .chat-box .message.sent { align-self: flex-end; background-color: #156e8f; color: white; }
+    .chat-input { display: flex; align-items: center; padding: 8px 8px; border-top: 1px solid #ddd; background: #ddd; width: 98%; margin-top: auto; margin:3px; }
+    .chat-input input { flex: 1; height: 35px; border: none; border-radius: 5px; padding: 0 10px; font-size: 14px; box-sizing: border-box; margin: 0 10px; }
+    .chat-input input:hover, .chat-input input:focus { border: none; outline: none; }
+    .chat-input .attach, .send { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; color: #156e8f; transition: color 0.2s ease, transform 0.2s ease; }
+    .attach:hover { fill: #1b7294; transform: scale(1.1); }
+    .chat-input .attach svg { display: block; }
+  </style>
+</head>
+<body>
+  <nav class="sidebar" role="navigation" aria-label="Main sidebar">
+    <button id="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="false" aria-controls="sidebar-menu">
+      <span class="material-icons-outlined">menu</span>
+    </button>
+    <div id="sidebar-menu">
+      <div class="top-icons" role="group" aria-label="Primary navigation">
+        <div class="icon-wrapper" tabindex="0" title="Chat"><span class="material-icons-outlined">chat</span><span class="label">Chat</span></div>
+        <div class="icon-wrapper" tabindex="0" title="Status"><span class="material-icons-outlined">circle</span><span class="label">Status</span></div>
+        <div class="icon-wrapper" tabindex="0" title="Community"><span class="material-icons-outlined">groups</span><span class="label">Community</span></div>
+      </div>
+      <div class="bottom-icons" role="group" aria-label="User options">
+        <div class="icon-wrapper" tabindex="0" title="Settings"><span class="material-icons-outlined">settings</span><span class="label">Settings</span></div>
+        <div class="icon-wrapper" tabindex="0" title="Profile"><span class="material-icons-outlined">person</span><span class="label">Profile</span></div>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="dashboard">
+      <section class="left-panel">
+        <header class="dashboard-header"><h1>R'Vani</h1></header>
+        <div class="dashboard-search"><input type="text" placeholder="Search chat"><img src="search.svg" alt="Search"></div>
+        <div class="chat-list">
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Deon Hoby</h5><p>New message received</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Jane Doe</h5><p>Typing...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Team Group</h5><p>New update available</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Test User</h5><p>Hello World</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Another User</h5><p>More messages...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Scroll User</h5><p>Keep scrolling</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>End User</h5><p>Last item</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Deon Hoby</h5><p>New message received</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Jane Doe</h5><p>Typing...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Team Group</h5><p>New update available</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Test User</h5><p>Hello World</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Another User</h5><p>More messages...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Scroll User</h5><p>Keep scrolling</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>End User</h5><p>Last item</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Deon Hoby</h5><p>New message received</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Jane Doe</h5><p>Typing...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Team Group</h5><p>New update available</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Test User</h5><p>Hello World</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Another User</h5><p>More messages...</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>Scroll User</h5><p>Keep scrolling</p></div></div>
+          <div class="chat-item"><img src="faviconn.png" alt="User"><div><h5>End User</h5><p>Last item</p></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="runner">
+      <div class="chat-section">
+        <div class="chat-header">
+          <img src="faviconn.png" alt="User" class="chat-user-pic">
+          <div class="chat-user-info"><h4>John Doe</h4><small>last seen today at 5:30 PM</small></div>
+        </div>
+        <div class="chat-box">
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+          <div class="message received">Hello 👋</div>
+          <div class="message sent">Hey! How are you?</div>
+          <div class="message received">I’m good, thanks!</div>
+        </div>
+        <div class="chat-input">
+          <button class="attach"><img src="attach.svg" alt=""></button>
+          <input type="text" placeholder="Type a message...">
+          <button class="send"><img src="send.svg" alt=""></button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const iconWrappers = document.querySelectorAll('.icon-wrapper');
+    const toggleIcon = toggleBtn.querySelector('.material-icons-outlined');
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('expanded');
+      const isExpanded = sidebar.classList.contains('expanded');
+      toggleBtn.setAttribute('aria-expanded', isExpanded);
+      toggleIcon.textContent = isExpanded ? 'close' : 'menu';
+    });
+    iconWrappers.forEach((icon, index) => {
+      icon.addEventListener('click', () => {
+        iconWrappers.forEach(i => i.classList.remove('selected'));
+        icon.classList.add('selected');
+      });
+      icon.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); icon.click(); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); const next = iconWrappers[index + 1] || iconWrappers[0]; next.focus(); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); const prev = iconWrappers[index - 1] || iconWrappers[iconWrappers.length - 1]; prev.focus(); }
+      });
+    });
+  </script>
+</body>
+</html>
